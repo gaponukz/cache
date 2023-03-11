@@ -7,22 +7,27 @@ class FunctionCache(typing.TypedDict):
     result: typing.Any
     time: float
 
-T = typing.TypeVar("T")
 CallableType = typing.TypeVar("CallableType", typing.Callable, typing.Awaitable)
 
-def cache(lifetime: int, blacklist_values: list = None, suffix: str = "", save_memory: bool = False) -> typing.Callable:
+def cache(
+        lifetime: int = float("inf"),
+        suffix: str = "",
+        save_memory: bool = False,
+        values_filter: typing.Callable[..., bool] = lambda *args, **kwargs: True,
+    ) -> typing.Callable:
+
     blacklist_values = blacklist_values or []
     storage: dict[str, FunctionCache] = {}
     
     def decorator(function: CallableType) -> CallableType:
         if asyncio.iscoroutinefunction(function):
             async def async_wrapper(*args, **kwargs) -> typing.Any:
-                key = f"{suffix}{function.__name__}_{args}_{kwargs}"
+                key = f"{suffix}{function.__name__}({args},{kwargs})"
 
                 if key in storage and time.monotonic() - storage[key]["time"] < lifetime:
                     return storage[key]["result"]
 
-                if (result := await function(*args, **kwargs)) not in blacklist_values:
+                if values_filter(result := await function(*args, **kwargs)):
                     storage[key] = {"result": result, "time": time.monotonic()}
 
                 return result
@@ -30,12 +35,12 @@ def cache(lifetime: int, blacklist_values: list = None, suffix: str = "", save_m
             return async_wrapper
         
         def sync_wrapper(*args, **kwargs) -> typing.Any:
-            key = f"{suffix}{function.__name__}_{args}_{kwargs}"
+            key = f"{suffix}{function.__name__}({args},{kwargs})"
 
             if key in storage and time.monotonic() - storage[key]["time"] < lifetime:
                 return storage[key]["result"]
             
-            if (result := function(*args, **kwargs)) not in blacklist_values:
+            if values_filter((result := function(*args, **kwargs))):
                 storage[key] = {"result": result, "time": time.monotonic()}
             
             return result
@@ -53,8 +58,6 @@ def cache(lifetime: int, blacklist_values: list = None, suffix: str = "", save_m
 
                 time.sleep(lifetime // 2)
 
-        thread = threading.Thread(target=clean_cache_daemon)
-        thread.daemon = True
-        thread.start()
+        threading.Thread(target=clean_cache_daemon, daemon=True).start()
 
     return decorator

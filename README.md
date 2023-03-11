@@ -17,7 +17,7 @@ long_function() # again few seconds
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | lifetime | `int` | The number of seconds that a cache entry should live before expiring. |
-| blacklist_values | `list` | A list of values that should not be cached. |
+| values_filter | `callable -> bool` | Filter for values that should be cached. |
 | suffix | `str` | A string that is added to the cache key to differentiate it from other cache entries. This is useful when multiple instances of the same function need to be cached. |
 | save_memory | `bool` | A boolean flag that indicates whether a background thread should be started to periodically clean up expired cache entries and free up memory. |
 
