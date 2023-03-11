@@ -16,7 +16,6 @@ def cache(
         values_filter: typing.Callable[..., bool] = lambda *args, **kwargs: True,
     ) -> typing.Callable:
 
-    blacklist_values = blacklist_values or []
     storage: dict[str, FunctionCache] = {}
     
     def decorator(function: CallableType) -> CallableType:
